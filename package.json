@@ -39,6 +39,7 @@
 		"@mjackson/headers": "^0.8.0",
 		"@openauthjs/openauth": "^0.0.22",
 		"@oslojs/encoding": "^1.1.0",
+		"debug": "^4.4.0",
 		"react-router": "^7.0.2",
 		"remix-auth": "^4.0.0"
 	},
@@ -48,6 +49,7 @@
 		"@biomejs/biome": "^1.8.3",
 		"@total-typescript/tsconfig": "^1.0.4",
 		"@types/bun": "^1.1.6",
+		"@types/debug": "^4.1.12",
 		"consola": "^3.2.3",
 		"msw": "^2.6.8",
 		"typedoc": "^0.27.4",
