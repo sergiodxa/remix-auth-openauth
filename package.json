@@ -1,7 +1,7 @@
 {
-	"name": "remix-auth-strategy-template",
+	"name": "remix-auth-openauth",
 	"version": "0.0.0",
-	"description": "A description of the strategy",
+	"description": "A Remix Auth strategy to use with an OpenAuth.js issuer",
 	"license": "MIT",
 	"funding": ["https://github.com/sponsors/sergiodxa"],
 	"author": {
@@ -11,11 +11,11 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/sergiodxa/remix-auth-strategy-template"
+		"url": "https://github.com/sergiodxa/remix-auth-openauth"
 	},
-	"homepage": "https://sergiodxa.github.io/remix-auth-strategy-template",
+	"homepage": "https://sergiodxa.github.io/remix-auth-openauth",
 	"bugs": {
-		"url": "https://github.com/sergiodxa/remix-auth-strategy-template/issues"
+		"url": "https://github.com/sergiodxa/remix-auth-openauth/issues"
 	},
 	"keywords": ["remix", "remix-auth", "auth", "authentication", "strategy"],
 	"scripts": {
