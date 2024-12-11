@@ -1,36 +1,95 @@
+import { Cookie, SetCookie } from "@mjackson/headers";
+import { createClient } from "@openauthjs/openauth/client";
+import { encodeBase64urlNoPadding } from "@oslojs/encoding";
 import { Strategy } from "remix-auth/strategy";
 
-export class MyStrategy<U> extends Strategy<U, MyStrategy.VerifyOptions> {
-	name = "change-me";
+export class OpenAuthStrategy<U> extends Strategy<
+	U,
+	OpenAuthStrategy.VerifyOptions
+> {
+	name = "openauth";
+
+	protected client: ReturnType<typeof createClient>;
 
 	constructor(
-		protected options: MyStrategy.Options,
-		verify: Strategy.VerifyFunction<U, MyStrategy.VerifyOptions>,
+		protected options: OpenAuthStrategy.ConstructorOptions,
+		verify: Strategy.VerifyFunction<U, OpenAuthStrategy.VerifyOptions>,
 	) {
 		super(verify);
-		// Do something with the options here
+
+		this.client = createClient(options);
 	}
 
-	async authenticate(request: Request): Promise<U> {
-		// Implement your authentication logic here
-		return this.verify({ request });
+	override async authenticate(request: Request): Promise<U> {
+		let url = new URL(request.url);
+
+		let code = url.searchParams.get("code");
+
+		if (!code) {
+			let [verifier, redirect] = (await this.client.pkce(
+				this.options.redirectURI,
+			)) as [string, string];
+
+			let url = new URL(redirect);
+			let state = this.generateState();
+			url.searchParams.set("state", state);
+
+			let setCookie = new SetCookie({
+				name: "openauth",
+				path: "/",
+				sameSite: "Lax",
+				maxAge: 60 * 5, // 5 minutes
+				httpOnly: true,
+				value: new URLSearchParams({ verifier, state }).toString(),
+			});
+
+			let headers = new Headers();
+			headers.append("Set-Cookie", setCookie.toString());
+			headers.append("Location", redirect);
+
+			throw new Response(null, { status: 302, headers });
+		}
+
+		let cookie = new Cookie(request.headers.get("cookie") ?? "");
+		let params = new URLSearchParams(cookie.get("openauth"));
+
+		let verifier = params.get("verifier");
+		let state = params.get("state");
+
+		if (!state) throw new Error("Missing state");
+		if (state !== url.searchParams.get("state")) {
+			throw new Error("Invalid state");
+		}
+		if (!verifier) throw new Error("Missing verifier");
+
+		let tokens = await this.client.exchange(
+			code,
+			this.options.redirectURI,
+			verifier,
+		);
+
+		return this.verify({ tokens });
+	}
+
+	protected generateState() {
+		let randomValues = new Uint8Array(32);
+		crypto.getRandomValues(randomValues);
+		return encodeBase64urlNoPadding(randomValues);
 	}
 }
 
-export namespace MyStrategy {
-	/**
-	 * This interface declares what configuration the strategy needs from the
-	 * developer to correctly work.
-	 */
-	export interface Options {
-		something: "You may need";
+export namespace OpenAuthStrategy {
+	export interface ConstructorOptions {
+		redirectURI: string;
+
+		clientID: string;
+		issuer?: string;
 	}
 
-	/**
-	 * This interface declares what the developer will receive from the strategy
-	 * to verify the user identity in their system.
-	 */
 	export interface VerifyOptions {
-		request: Request;
+		tokens: {
+			access: string;
+			refresh: string;
+		};
 	}
 }
