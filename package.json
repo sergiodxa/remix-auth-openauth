@@ -38,6 +38,7 @@
 	"dependencies": {
 		"@mjackson/headers": "^0.8.0",
 		"@openauthjs/openauth": "^0.0.22",
+		"@oslojs/encoding": "^1.1.0",
 		"react-router": "^7.0.2",
 		"remix-auth": "^4.0.0"
 	},
