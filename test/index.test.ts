@@ -1,120 +1,118 @@
-import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	mock,
+	test,
+} from "bun:test";
 import { Cookie, SetCookie } from "@mjackson/headers";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/native";
 import { OpenAuthStrategy } from "../src/index";
 
 describe(OpenAuthStrategy.name, () => {
-	let server = setupServer();
+	const server = setupServer(
+		http.post("https://auth.example.com/token", async () => {
+			return HttpResponse.json({
+				access_token: "access-token",
+				refresh_token: "refresh-token",
+			});
+		}),
+	);
+
+	const user = { id: "123" };
+
+	let verify = mock<
+		(options: OpenAuthStrategy.VerifyOptions) => Promise<typeof user>
+	>().mockImplementation(() => Promise.resolve(user));
+
+	let options = Object.freeze({
+		clientId: "client-id",
+		redirectUri: "https://example.com/callback",
+		issuer: "https://auth.example.com",
+	} satisfies OpenAuthStrategy.ConstructorOptions);
 
 	beforeAll(() => server.listen());
+	afterEach(() => server.resetHandlers());
 	afterAll(() => server.close());
 
-	test("#name", () => {
+	test("#name is openauth", () => {
 		let verify = mock();
-
-		let strategy = new OpenAuthStrategy(
-			{
-				clientID: "client-id",
-				redirectURI: "redirect-uri",
-				issuer: "https://auth.example.com",
-			},
-			verify,
-		);
-
+		let strategy = new OpenAuthStrategy(options, verify);
 		expect(strategy.name).toBe("openauth");
 	});
 
-	test("#authenticate starts flow", async () => {
-		let verify = mock();
+	test("handles complete OAuth2 flow", async () => {
+		let strategy = new OpenAuthStrategy<typeof user>(options, verify);
 
-		let strategy = new OpenAuthStrategy(
-			{
-				clientID: "client-id",
-				redirectURI: "redirect-uri",
-				issuer: "https://auth.example.com",
-			},
-			verify,
+		// We create multiple responses (this ensure we handle race conditions on set-cookie)
+		let responses = await Promise.all(
+			Array.from({ length: random() }, () =>
+				catchResponse(
+					strategy.authenticate(new Request("https://example.com/login")),
+				),
+			),
 		);
 
-		let request = new Request("https://example.com");
-
-		let response = await catchResponse(strategy.authenticate(request));
-
-		// biome-ignore lint/style/noNonNullAssertion: We are testing the response.
-		let url = new URL(response.headers.get("Location")!);
-
-		let setCookie = new SetCookie(response.headers.get("set-cookie") ?? "");
-
-		expect(response.status).toBe(302);
-
-		expect(url.searchParams.get("client_id")).toBe("client-id");
-		expect(url.searchParams.get("redirect_uri")).toBe("redirect-uri");
-		expect(url.searchParams.get("response_type")).toBe("code");
-		expect(url.searchParams.get("code_challenge_method")).toBe("S256");
-		expect(url.searchParams.get("code_challenge")).toBeString();
-
-		expect(setCookie.name).toBe("openauth");
-		expect(setCookie.path).toBe("/");
-		expect(setCookie.sameSite).toBe("Lax");
-		expect(setCookie.httpOnly).toBe(true);
-		expect(setCookie.value).toBeString();
-	});
-
-	test("#authenticate exchanges code", async () => {
-		let verify = mock<
-			(
-				tokens: OpenAuthStrategy.VerifyOptions,
-			) => Promise<OpenAuthStrategy.VerifyOptions>
-		>().mockImplementation(async (tokens) => tokens);
-
-		let strategy = new OpenAuthStrategy(
-			{
-				clientID: "client-id",
-				redirectURI: "redirect-uri",
-				issuer: "https://auth.example.com",
-			},
-			verify,
-		);
+		// Get the cookies the redirects are setting
+		let setCookies: SetCookie[] = responses
+			.flatMap((res) => res.headers.getSetCookie())
+			.map((header) => new SetCookie(header));
 
 		let cookie = new Cookie();
-		cookie.set("verifier", "verifier");
 
-		let request = new Request("https://example.com?code=code", {
-			headers: { cookie: cookie.toString() },
+		for (let setCookie of setCookies) {
+			// Add cookies to our cookie object as if we were a browser
+			cookie.set(setCookie.name as string, setCookie.value as string);
+		}
+
+		// Create a callback URI with the state, and random code and the cookies
+		let urls = setCookies.map((setCookie) => {
+			let params = new URLSearchParams(setCookie.value);
+			let url = new URL("https://example.com/callback");
+			url.searchParams.set("state", params.get("state") as string);
+			url.searchParams.set("code", crypto.randomUUID());
+			return url;
 		});
 
-		server.resetHandlers(
-			http.post("https://auth.example.com/token", async ({ request }) => {
-				let body = await request.formData();
-
-				expect(body.get("code")).toBe("code");
-				expect(body.get("redirect_uri")).toBe("redirect-uri");
-				expect(body.get("client_id")).toBe("client-id");
-				expect(body.get("code_verifier")).toBe("verifier");
-
-				return HttpResponse.json({
-					ok: true,
-					access_token: "access",
-					refresh_token: "refresh",
-				});
+		// Call the strategy with the requests received on the callback
+		let users = await Promise.all(
+			urls.map((url) => {
+				let headers = new Headers();
+				headers.append("Cookie", cookie.toString());
+				return strategy.authenticate(new Request(url, { headers }));
 			}),
 		);
 
-		await strategy.authenticate(request);
+		// We expect to have received an array with the same amount of flow we
+		// initiated and all of them with the same user
+		expect(users).toEqual(Array.from({ length: responses.length }, () => user));
 
-		expect(verify).toHaveBeenCalledWith({
-			tokens: { access: "access", refresh: "refresh" },
+		// We expect verify to have been called once per flow we initiated, and all
+		// to receive the request and tokens
+		expect(verify).toHaveBeenNthCalledWith(responses.length, {
+			request: expect.any(Request),
+			tokens: { access: "access-token", refresh: "refresh-token" },
 		});
 	});
 });
 
+function isResponse(value: unknown): value is Response {
+	return value instanceof Response;
+}
+
 async function catchResponse(promise: Promise<unknown>) {
 	try {
 		await promise;
-		throw new Error("The promise didn't throw a response.");
+		throw new Error("Should have failed.");
 	} catch (error) {
-		if (error instanceof Response) return error;
+		if (isResponse(error)) return error;
 		throw error;
 	}
+}
+
+function random(min = 1, max = 10) {
+	return Math.floor(Math.random() * (max - min + 1)) + min;
 }
