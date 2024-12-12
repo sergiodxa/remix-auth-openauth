@@ -3,9 +3,7 @@
 	"version": "0.0.1",
 	"description": "A Remix Auth strategy to use with an OpenAuth.js issuer",
 	"license": "MIT",
-	"funding": [
-		"https://github.com/sponsors/sergiodxa"
-	],
+	"funding": ["https://github.com/sponsors/sergiodxa"],
 	"author": {
 		"name": "Sergio Xalambrí",
 		"email": "hello+oss@sergiodxa.com",
@@ -19,13 +17,7 @@
 	"bugs": {
 		"url": "https://github.com/sergiodxa/remix-auth-openauth/issues"
 	},
-	"keywords": [
-		"remix",
-		"remix-auth",
-		"auth",
-		"authentication",
-		"strategy"
-	],
+	"keywords": ["remix", "remix-auth", "auth", "authentication", "strategy"],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -38,11 +30,7 @@
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"files": [
-		"build",
-		"package.json",
-		"README.md"
-	],
+	"files": ["build", "package.json", "README.md"],
 	"exports": {
 		".": "./build/index.js",
 		"./package.json": "./package.json"
@@ -51,11 +39,11 @@
 		"@mjackson/headers": "^0.8.0",
 		"@openauthjs/openauth": "^0.0.22",
 		"@oslojs/encoding": "^1.1.0",
-		"debug": "^4.4.0",
-		"react-router": "^7.0.2",
+		"debug": "^4.4.0"
+	},
+	"peerDependencies": {
 		"remix-auth": "^4.0.0"
 	},
-	"peerDependencies": {},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.17.1",
 		"@biomejs/biome": "^1.8.3",
