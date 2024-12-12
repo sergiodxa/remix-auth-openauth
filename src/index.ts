@@ -100,7 +100,7 @@ export class OpenAuthStrategy<U> extends Strategy<
 		let tokens = await this.validateAuthorizationCode(code, codeVerifier);
 
 		debug("Verifying the user profile");
-		let user = await this.verify({ request, tokens });
+		let user = await this.verify({ request, client: this.client, tokens });
 
 		debug("User authenticated");
 		return user;
@@ -201,6 +201,7 @@ export namespace OpenAuthStrategy {
 
 	export interface VerifyOptions {
 		request: Request;
+		client: ReturnType<typeof createClient>;
 		tokens: { access: string; refresh: string };
 	}
 }
