@@ -94,6 +94,7 @@ describe(OpenAuthStrategy.name, () => {
 		// to receive the request and tokens
 		expect(verify).toHaveBeenNthCalledWith(responses.length, {
 			request: expect.any(Request),
+			client: expect.any(Object),
 			tokens: { access: "access-token", refresh: "refresh-token" },
 		});
 	});
