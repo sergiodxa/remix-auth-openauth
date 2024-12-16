@@ -49,7 +49,7 @@
 	},
 	"dependencies": {
 		"@mjackson/headers": "^0.8.0",
-		"@openauthjs/openauth": "^0.0.22",
+		"@openauthjs/openauth": "^0.2.3",
 		"@oslojs/encoding": "^1.1.0",
 		"debug": "^4.4.0"
 	},
