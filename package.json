@@ -1,9 +1,11 @@
 {
 	"name": "remix-auth-openauth",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "A Remix Auth strategy to use with an OpenAuth.js issuer",
 	"license": "MIT",
-	"funding": ["https://github.com/sponsors/sergiodxa"],
+	"funding": [
+		"https://github.com/sponsors/sergiodxa"
+	],
 	"author": {
 		"name": "Sergio Xalambrí",
 		"email": "hello+oss@sergiodxa.com",
@@ -17,7 +19,13 @@
 	"bugs": {
 		"url": "https://github.com/sergiodxa/remix-auth-openauth/issues"
 	},
-	"keywords": ["remix", "remix-auth", "auth", "authentication", "strategy"],
+	"keywords": [
+		"remix",
+		"remix-auth",
+		"auth",
+		"authentication",
+		"strategy"
+	],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -30,7 +38,11 @@
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"files": ["build", "package.json", "README.md"],
+	"files": [
+		"build",
+		"package.json",
+		"README.md"
+	],
 	"exports": {
 		".": "./build/index.js",
 		"./package.json": "./package.json"
