@@ -1,5 +1,6 @@
 import type { SetCookieInit } from "@mjackson/headers";
 import { createClient } from "@openauthjs/openauth/client";
+import * as OpenAuthError from "@openauthjs/openauth/error";
 import { encodeBase64urlNoPadding } from "@oslojs/encoding";
 import createDebug from "debug";
 import { Strategy } from "remix-auth/strategy";
@@ -25,6 +26,7 @@ export class OpenAuthStrategy<U> extends Strategy<
 		this.client = createClient({
 			clientID: options.clientId,
 			issuer: options.issuer,
+			fetch: options.fetch,
 		});
 	}
 
@@ -57,10 +59,10 @@ export class OpenAuthStrategy<U> extends Strategy<
 		if (!code) {
 			debug("No code found in the URL, redirecting to authorization endpoint");
 
-			let { state, codeVerifier, url } = await this.createAuthorizationURL();
+			let { state, verifier, url } = await this.createAuthorizationURL();
 
 			debug("State", state);
-			debug("Code verifier", codeVerifier);
+			debug("Code verifier", verifier);
 
 			url.search = this.authorizationParams(
 				url.searchParams,
@@ -70,7 +72,7 @@ export class OpenAuthStrategy<U> extends Strategy<
 			debug("Authorization URL", url.toString());
 
 			let store = StateStore.fromRequest(request, this.cookieName);
-			store.set(state, codeVerifier);
+			store.set(state, verifier);
 
 			let setCookie = store.toSetCookie(this.cookieName, this.cookieOptions);
 
@@ -97,7 +99,15 @@ export class OpenAuthStrategy<U> extends Strategy<
 		}
 
 		debug("Validating authorization code");
-		let tokens = await this.validateAuthorizationCode(code, codeVerifier);
+		let result = await this.validateAuthorizationCode(code, codeVerifier);
+
+		if (result.err) {
+			throw new Error("Failed to validate authorization code", {
+				cause: result.err,
+			});
+		}
+
+		let tokens = result.tokens;
 
 		debug("Verifying the user profile");
 		let user = await this.verify({ request, client: this.client, tokens });
@@ -107,16 +117,15 @@ export class OpenAuthStrategy<U> extends Strategy<
 	}
 
 	protected async createAuthorizationURL() {
-		let state = this.generateState();
+		let result = await this.client.authorize(this.options.redirectUri, "code", {
+			pkce: true,
+			provider: this.options.provider,
+		});
 
-		let [codeVerifier, redirect] = (await this.client.pkce(
-			this.options.redirectUri,
-		)) as [string, string];
+		let url = new URL(result.url);
+		url.searchParams.set("state", result.challenge.state);
 
-		let url = new URL(redirect);
-		url.searchParams.set("state", state);
-
-		return { state, codeVerifier, url };
+		return { ...result.challenge, url };
 	}
 
 	protected validateAuthorizationCode(code: string, codeVerifier: string) {
@@ -147,10 +156,35 @@ export class OpenAuthStrategy<U> extends Strategy<
 }
 
 export namespace OpenAuthStrategy {
+	type FetchLike = NonNullable<Parameters<typeof createClient>["0"]["fetch"]>;
+
 	export interface ConstructorOptions {
+		/**
+		 * The redirect URI of the application you registered in the OpenAuth
+		 * server.
+		 *
+		 * This is where the user will be redirected after they authenticate.
+		 *
+		 * @example
+		 * "https://example.com/auth/callback"
+		 */
 		redirectUri: string;
+
+		/**
+		 * The client ID of the application you registered in the OpenAuth server.
+		 * @example
+		 * "my-client-id"
+		 */
 		clientId: string;
+
+		/**
+		 * The issuer of the OpenAuth server you want to use.
+		 * This is where your OpenAuth server is hosted.
+		 * @example
+		 * "https://openauth.example.com"
+		 */
 		issuer: string;
+
 		/**
 		 * The identity provider already configured in your OpenAuth server you
 		 * want to send the user to.
@@ -197,6 +231,13 @@ export namespace OpenAuthStrategy {
 		 * @default "oauth2"
 		 */
 		cookie?: string | (Omit<SetCookieInit, "value"> & { name: string });
+
+		/**
+		 * A custom fetch implementation to use when making requests to the OAuth2
+		 * server. This can be useful when you need to replace the default fetch
+		 * to use a proxy, for example.
+		 */
+		fetch?: FetchLike;
 	}
 
 	export interface VerifyOptions {
@@ -225,3 +266,5 @@ export class OAuth2RequestError extends Error {
 		this.state = state;
 	}
 }
+
+export { OpenAuthError };
