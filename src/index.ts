@@ -1,6 +1,7 @@
 import type { SetCookieInit } from "@mjackson/headers";
-import { createClient } from "@openauthjs/openauth/client";
+import { type Tokens, createClient } from "@openauthjs/openauth/client";
 import * as OpenAuthError from "@openauthjs/openauth/error";
+import type { SubjectSchema } from "@openauthjs/openauth/session";
 import { encodeBase64urlNoPadding } from "@oslojs/encoding";
 import createDebug from "debug";
 import { Strategy } from "remix-auth/strategy";
@@ -101,11 +102,7 @@ export class OpenAuthStrategy<U> extends Strategy<
 		debug("Validating authorization code");
 		let result = await this.validateAuthorizationCode(code, codeVerifier);
 
-		if (result.err) {
-			throw new Error("Failed to validate authorization code", {
-				cause: result.err,
-			});
-		}
+		if (result.err) throw result.err;
 
 		let tokens = result.tokens;
 
@@ -114,6 +111,41 @@ export class OpenAuthStrategy<U> extends Strategy<
 
 		debug("User authenticated");
 		return user;
+	}
+
+	/**
+	 * Refreshes the access token using the provided refresh token.
+	 *
+	 * @param refresh - The refresh token to use for obtaining a new access token.
+	 * @param access - An optional access token to validate if it needs to be refreshed.
+	 * @returns The new tokens obtained after refreshing.
+	 */
+	public async refreshToken(
+		refresh: string,
+		access?: string,
+	): Promise<Tokens | undefined> {
+		debug("Refreshing tokens");
+		let result = await this.client.refresh(refresh, { access });
+		if (result.err) throw result.err;
+		debug("Tokens refreshed");
+		if (!result.tokens && access) return { access, refresh };
+		if (!access && !result.tokens) throw new Error("No tokens returned");
+		return result.tokens;
+	}
+
+	public async verifyToken<T extends SubjectSchema>(
+		schema: T,
+		token: string,
+		options?: { refresh: string; audience?: string },
+	) {
+		let result = await this.client.verify<T>(schema, token, {
+			...options,
+			issuer: this.options.issuer,
+			fetch: this.options.fetch as typeof fetch,
+		});
+		if (result.err) throw result.err;
+		let { err: _, ...clone } = structuredClone(result);
+		return clone;
 	}
 
 	protected async createAuthorizationURL() {
