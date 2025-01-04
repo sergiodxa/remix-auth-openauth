@@ -164,12 +164,6 @@ export class OpenAuthStrategy<U> extends Strategy<
 		return this.client.exchange(code, this.options.redirectUri, codeVerifier);
 	}
 
-	protected generateState() {
-		let randomValues = new Uint8Array(32);
-		crypto.getRandomValues(randomValues);
-		return encodeBase64urlNoPadding(randomValues);
-	}
-
 	/**
 	 * Return extra parameters to be included in the authorization request.
 	 *
