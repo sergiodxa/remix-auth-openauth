@@ -1,7 +1,7 @@
 import type { SetCookieInit } from "@mjackson/headers";
 import { type Tokens, createClient } from "@openauthjs/openauth/client";
 import * as OpenAuthError from "@openauthjs/openauth/error";
-import type { SubjectSchema } from "@openauthjs/openauth/session";
+import type { SubjectSchema } from "@openauthjs/openauth/subject";
 import { encodeBase64urlNoPadding } from "@oslojs/encoding";
 import createDebug from "debug";
 import { Strategy } from "remix-auth/strategy";
