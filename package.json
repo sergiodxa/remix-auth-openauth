@@ -65,7 +65,7 @@
 		"consola": "^3.3.3",
 		"msw": "^2.7.0",
 		"typedoc": "^0.28.0",
-		"typedoc-plugin-mdn-links": "^4.0.6",
+		"typedoc-plugin-mdn-links": "^5.0.1",
 		"typescript": "^5.5.4"
 	}
 }
