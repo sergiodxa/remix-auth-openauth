@@ -48,7 +48,7 @@
 		"./package.json": "./package.json"
 	},
 	"dependencies": {
-		"@mjackson/headers": "^0.10.0",
+		"@mjackson/headers": "^0.11.1",
 		"@openauthjs/openauth": "^0.4.2",
 		"@oslojs/encoding": "^1.1.0",
 		"debug": "^4.4.0"
