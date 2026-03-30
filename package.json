@@ -66,6 +66,6 @@
 		"msw": "^2.7.0",
 		"typedoc": "^0.28.0",
 		"typedoc-plugin-mdn-links": "^5.0.2",
-		"typescript": "^5.5.4"
+		"typescript": "^6.0.2"
 	}
 }
